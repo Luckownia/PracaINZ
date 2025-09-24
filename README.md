@@ -114,7 +114,7 @@ Po uruchomieniu aplikacji w przeglądarce (domyślnie `http://localhost:8501`) w
 - Po załadowaniu danych wybierz kolumny do wykresu oraz jego typ.
 
 ### 🔹 Kamery
-- Dodaj adres URL strumienia z kamery (np. RTSP, MJPEG, HTTP).
+- Dodaj adres URL strumienia z kamery.
 - Aplikacja pokaże obraz na żywo w czasie rzeczywistym.
 - Możesz dodawać i usuwać wiele kamer dynamicznie.
 
