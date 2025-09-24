@@ -12,15 +12,6 @@ https://realtimedatadashboard.streamlit.app/
 - 🎥 **Podgląd z kamer** – dodaj strumienie kamer i oglądaj obraz na żywo.
 - 📈 **Dynamiczne wykresy** – generowanie wykresów liniowych, słupkowych i punktowych z Plotly.
 
----
-
-## 🧰 Technologie
-
-- [Streamlit](https://streamlit.io/) - framework do wizualizacji danych
-- [Plotly](https://plotly.com/python/) - obsługa wykresów
-- [OpenCV](https://opencv.org/) – obsługa kamer
-- [SQLAlchemy](https://www.sqlalchemy.org/) – obsługa relacyjnych baz danych
-- [PyMongo](https://pymongo.readthedocs.io/en/stable/) – obsługa MongoDB
 
 ---
 
