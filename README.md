@@ -16,7 +16,7 @@ https://realtimedatadashboard.streamlit.app/
 
 ## 🧰 Technologie
 
-- [Streamlit](https://streamlit.io/)
+- [Streamlit](https://streamlit.io/) - framework do wizualizacji danych
 - [Plotly](https://plotly.com/python/) - obsługa wykresów
 - [OpenCV](https://opencv.org/) – obsługa kamer
 - [SQLAlchemy](https://www.sqlalchemy.org/) – obsługa relacyjnych baz danych
