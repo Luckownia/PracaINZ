@@ -10,14 +10,16 @@ from charts.plotter import render_chart
 import pymysql
 pymysql.install_as_MySQLdb()
 
+# Ustawienia strony
+st.set_page_config(layout="wide")
 
 # Inicjalizacja sesji
 initialize_session_state()
 
 st.title("📊 Twój Dashboard")
 
-#Odświeżanie aplikacji (by połączyć się z bazami danych w chmurach trzeba większy interval)
-st_autorefresh(interval=5000, limit=None, key="data_refresh")
+# Odświeżanie aplikacji
+st_autorefresh(interval=1000, limit=None, key="data_refresh")
 
 config_choice = st.sidebar.radio("Wybierz konfigurację", ["API", "Baza danych", "Kamery"])
 
@@ -36,72 +38,93 @@ elif config_choice == "Kamery":
     from ui.camera_config import camera_config_ui
     camera_config_ui()
 
-# --- Wyświetlanie wykresów i kamer ---
-st.subheader("📈 Wykresy")
+st.subheader("📈 Dashboard")
 
-for idx, chart in enumerate(st.session_state.charts):
-    chart_id = chart["id"]
-    st.markdown(f"### Wykres {idx + 1} - {chart['title']} - Źródło: {chart['source']}")
+# Wszystko w jednej liście
+items = st.session_state.dashboard_items
+num_cols = 3
 
-    # Usuwanie wykresów
-    if st.button(f"🗑️ Usuń wykres {idx + 1}", key=f"delete_chart_{chart_id}"):
-        del st.session_state.chart_data[chart_id]
-        st.session_state.charts = [
-            c for c in st.session_state.charts if c["id"] != chart_id
-        ]
-        st.rerun()
+for i in range(0, len(items), num_cols):
+    cols = st.columns(num_cols)
+    for j, item in enumerate(items[i:i + num_cols]):
+        idx = i + j  # globalny indeks w dashboard_items
+        with cols[j]:
+            # --- Wykres ---
+            if item["kind"] == "chart":
+                chart = item["data"]
+                chart_id = chart["id"]
 
-    # Pobieranie nowych danych
-    if chart["source"] == "API":
-        new_data = fetch_data_from_api(chart["api_url"], chart["params"])
-    else:
-        new_data = fetch_data_from_db(
-            chart["db_connection"], chart["query"],
-            st.session_state.db_type, chart.get("collection_name", "")
-        )
+                # Pobieranie nowych danych
+                if chart["source"] == "API":
+                    new_data = fetch_data_from_api(chart["api_url"], chart["params"])
+                else:
+                    new_data = fetch_data_from_db(
+                        chart["db_connection"], chart["query"],
+                        st.session_state.db_type, chart.get("collection_name", "")
+                    )
 
-    if not new_data.empty:
-        st.session_state.chart_data[chart_id] = pd.concat(
-            [st.session_state.chart_data[chart_id], new_data], ignore_index=True
-        )
+                if not new_data.empty:
+                    st.session_state.chart_data[chart_id] = pd.concat(
+                        [st.session_state.chart_data[chart_id], new_data], ignore_index=True
+                    )
 
-    data = st.session_state.chart_data[chart_id]
-    if "max_points" in chart and len(data) > chart["max_points"]:
-        data = data.tail(chart["max_points"])
+                data = st.session_state.chart_data[chart_id]
+                if "max_points" in chart and len(data) > chart["max_points"]:
+                    data = data.tail(chart["max_points"])
 
-    fig = render_chart(chart, data)
+                fig = render_chart(chart, data)
+                st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("📺 Podgląd kamer (na żywo)")
+                # Przyciski sterujące
+                col_btns = st.columns([1, 1, 2])
+                with col_btns[0]:
+                    if st.button("⬅️", key=f"left_{idx}") and idx > 0:
+                        items[idx-1], items[idx] = items[idx], items[idx-1]
+                        st.session_state.dashboard_items = items
+                        st.rerun()
+                with col_btns[1]:
+                    if st.button("➡️", key=f"right_{idx}") and idx < len(items) - 1:
+                        items[idx+1], items[idx] = items[idx], items[idx+1]
+                        st.session_state.dashboard_items = items
+                        st.rerun()
+                with col_btns[2]:
+                    if st.button(f"🗑️ Usuń {chart['title']}", key=f"delete_chart_{chart_id}"):
+                        del st.session_state.chart_data[chart_id]
+                        del st.session_state.dashboard_items[idx]
+                        st.rerun()
 
-for idx, camera in enumerate(st.session_state.cameras):
-    st.markdown(f"**Kamera:** `{camera}`")
+            # --- Kamera ---
+            elif item["kind"] == "camera":
+                camera = item["data"]
+                st.markdown(f"**Kamera:** `{camera}`")
 
-    # Usuwanie kamer
-    if st.button(f"🗑️ Usuń kamerę {camera}", key=f"delete_camera_{camera}_{idx}"):
-        st.session_state.cameras.remove(camera)
-        st.rerun()
+                # Podgląd kamery
+                if any(ext in camera.lower() for ext in [".jpg", ".jpeg", ".mjpg", "snapshot", "faststream"]):
+                    st.image(camera, use_container_width=True)
+                else:
+                    frame = get_camera_frame(camera)
+                    if frame is not None:
+                        st.image(frame, channels="RGB", use_container_width=True)
+                    else:
+                        st.error(f"❌ Nie udało się pobrać obrazu z kamery: {camera}")
 
-    # Obsługa MJPEG lub snapshot (np. .jpg, .mjpg, faststream)
-    if any(ext in camera.lower() for ext in [".jpg", ".jpeg", ".mjpg", "snapshot", "faststream"]):
-        st.markdown(f"""
-        <img src="{camera}" width="100%" style="border: 2px solid #999; border-radius: 10px;">
-        """, unsafe_allow_html=True)
-    else:
-        frame = get_camera_frame(camera)
-        if frame is not None:
-            st.image(frame, channels="RGB", use_container_width=True)
-        else:
-            st.error(f"❌ Nie udało się pobrać obrazu z kamery: {camera}")
+                # Przyciski sterujące
+                col_btns = st.columns([1, 1, 2])
+                with col_btns[0]:
+                    if st.button("⬅️", key=f"left_{idx}") and idx > 0:
+                        items[idx-1], items[idx] = items[idx], items[idx-1]
+                        st.session_state.dashboard_items = items
+                        st.rerun()
+                with col_btns[1]:
+                    if st.button("➡️", key=f"right_{idx}") and idx < len(items) - 1:
+                        items[idx+1], items[idx] = items[idx], items[idx+1]
+                        st.session_state.dashboard_items = items
+                        st.rerun()
+                with col_btns[2]:
+                    if st.button("🗑️ Usuń kamerę", key=f"delete_camera_{idx}"):
+                        del st.session_state.dashboard_items[idx]
+                        st.rerun()
 
-
-# Zowlnienie zasobów gdy nie ma kamer
-if not st.session_state.cameras:
+# Zwolnienie zasobów gdy brak kamer w dashboardzie
+if not any(item["kind"] == "camera" for item in st.session_state.dashboard_items):
     release_all_cameras()
-
-
-
-
-
-
-
-
