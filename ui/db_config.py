@@ -91,6 +91,7 @@ def db_config_ui():
 
         if st.sidebar.button("Dodaj wykres"):
             if chart_title:
+                chart_id = str(uuid.uuid4()) 
                 st.session_state.dashboard_items.append({
                     "kind": "chart",
                     "data": {
@@ -111,6 +112,7 @@ def db_config_ui():
                 st.session_state.db_data_loaded = False
                 st.session_state.chart_title = ""
                 st.rerun()
+
 
 
 
